@@ -2,6 +2,6 @@
  Free to use discord Client
 
 # Download
- Linux:
  `pip install -r requirements.txt`
+ then
  `python3 DiscordClient/main.py`
