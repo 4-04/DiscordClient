@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets, uic, QtCore
 from functools import partial
-from discord import DMChannel
+from discord import DMChannel, GroupChannel
 import asyncio
 import sys
 import os
@@ -36,7 +36,7 @@ class Chat(object):
 
 
     def createMsg(self, frame, author, content, time):
-        text = "<h3><b style='color: white;'>{0}<b></h3>{1}\n<h4><p style='color: #D6D7D4;'>{2}</p></h4>".format(author, time, content)
+        text = "<h3><b style='color: white;'>{0}<b></h3>{1}\n<h4><p style='color: #D6D7D4;' font-size: 24px;>{2}</p></h4>".format(author, time, content)
         label = QtWidgets.QLabel(frame)
         # label.setMaximumSize(QtCore.QSize(16777215, 100))
         label.setOpenExternalLinks(True)
@@ -99,6 +99,7 @@ class Chat(object):
 
     def processChannel(self, channel):
         self.clearLayout(self.window.gridLayout_4)
+        self.clearLayout(self.window.verticalLayout_6)
         self.current_channel = channel
         frame = self.frames.get(channel.id)
         if not frame:
@@ -110,8 +111,8 @@ class Chat(object):
         if self.window.fetch_messages.isChecked() and not fetched:
             self.frames[channel.id] = [frame, layout, True]
             self.loop.create_task(self.bot.fetchLatest(self.addMsg, channel, int(self.window.spinBox.value())))
-        if self.window.load_members.isChecked() and hasattr(channel, 'members'):
-            for member in channel.members:
+        if self.window.load_members.isChecked():
+            for member in (channel.recipients if isinstance(channel, GroupChannel) else channel.members):
                 label = QtWidgets.QLabel(self.window.scrollAreaWidgetContents_3)
                 label.setText(member.name)
                 label.setToolTip("Member ID: {0}".format(member.id))
@@ -137,7 +138,16 @@ class Chat(object):
         self.clearLayout(self.window.verticalLayout_5)
         for channel in self.bot.private_channels:
             button = QtWidgets.QPushButton(self.window.frame_3)
-            button.setText("#{0}".format(channel.recipient.name))
+            if isinstance(channel, GroupChannel):
+                name = channel.name
+                button.setToolTip("Owner: {0}\nId: {1}\nMembers: {2}".format(
+                    channel.owner,
+                    channel.id,
+                    len(channel.recipients)
+                ))
+            else:
+                name = channel.recipient.name
+            button.setText("#{0}".format(name))
             button.setToolTip("Channel ID: {0}".format(channel.id))
             button.clicked.connect(partial(self.processChannel, channel))
             self.window.verticalLayout_5.addWidget(button)
