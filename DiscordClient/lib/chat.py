@@ -12,6 +12,7 @@ class Chat(object):
         self.loop = loop
         self.bot = bot
         self.current_guild = None
+        self.current_guild_button = None
         self.current_channel = None
         self.frames = {} # {channel_id: [frame, layout, fetched]}
         self.window.button_home.clicked.connect(self.loadHome)
@@ -28,22 +29,35 @@ class Chat(object):
             text,
             self.current_channel
         )
-        self.window.message_send.setText("")
-        self.loop.create_task(self.bot.sendMessage(text, self.current_channel))
+        if self.window.settings_clear_input.isChecked():
+            self.window.message_send.setText("")
+        for _ in range(int(self.window.settings_amount_to_send.value())):
+            self.loop.create_task(self.bot.sendMessage(text, self.current_channel))
 
+
+    def createMsg(self, frame, author, content, time):
+        text = "<h3><b style='color: white;'>{0}<b></h3>{1}\n<h4><p style='color: #D6D7D4;'>{2}</p></h4>".format(author, time, content)
+        label = QtWidgets.QLabel(frame)
+        # label.setMaximumSize(QtCore.QSize(16777215, 100))
+        label.setOpenExternalLinks(True)
+        label.setText(text)
+        label.setStyleSheet("border: 1px solid black;")
+        return label
 
     def addMsg(self, msg, channel):
         frame = self.frames.get(channel)
         if not frame:
             return
         frame, layout, _ = frame
-        text = "<b style='color: white;'>{0}<b>\n<p style='color: #D6D7D4;'>{1}</p>".format(msg.author, msg.content)
-        label = QtWidgets.QLabel(frame)
-        label.setMaximumSize(QtCore.QSize(16777215, 50))
-        label.setOpenExternalLinks(True)
-        label.setText(text)
-        label.setStyleSheet("border: 1px solid black;")
-        layout.addWidget(label)
+        if msg.embeds and self.window.settings_render_embeds.isChecked():
+            for embed in msg.embeds:
+                layout.addWidget(self.createMsg(
+                    frame,
+                    embed.author,
+                    "{0}\n{1}\n{2}".format(embed.title, embed.description, embed.footer),
+                    embed.url
+                ))
+        layout.addWidget(self.createMsg(frame, msg.author, msg.clean_content, msg.created_at))
 
     def createFrame(self):
         frame = QtWidgets.QFrame(self.window.scrollAreaWidgetContents)
@@ -56,12 +70,13 @@ class Chat(object):
 
 
     def createGuildButton(self, guild):
-        button = QtWidgets.QPushButton(self.window.frame)
+        button = QtWidgets.QPushButton(self.window.scrollAreaWidgetContents_4)
         button.setText(guild.name)
         button.clicked.connect(
             partial(
                 self.processGuild,
-                guild
+                guild,
+                button
             )
         )
         self.window.verticalLayout.addWidget(button)
@@ -91,11 +106,11 @@ class Chat(object):
             fetched = False
             self.frames[channel.id] = [frame, layout, fetched]
         else:
-            frame, layout, fetched = framex
-        if self.window.fetch_previous and not fetched:
+            frame, layout, fetched = frame
+        if self.window.fetch_messages.isChecked() and not fetched:
             self.frames[channel.id] = [frame, layout, True]
-            self.loop.create_task(self.bot.fetchLatest(self.addMsg, channel, self.window.fetch_amount))
-        if self.window.load_members and hasattr(channel, 'members'):
+            self.loop.create_task(self.bot.fetchLatest(self.addMsg, channel, int(self.window.spinBox.value())))
+        if self.window.load_members.isChecked() and hasattr(channel, 'members'):
             for member in channel.members:
                 label = QtWidgets.QLabel(self.window.scrollAreaWidgetContents_3)
                 label.setText(member.name)
@@ -106,11 +121,15 @@ class Chat(object):
         self.window.gridLayout_4.addWidget(frame, 0, 0, 1, 1)
 
 
-    def processGuild(self, guild):
+    def processGuild(self, guild, button=None):
         if self.current_guild == guild or not guild:
             return
+        if self.current_guild_button:
+            self.current_guild_button.setStyleSheet("")
         self.clearLayout(self.window.gridLayout_4)
         self.current_guild = guild
+        self.current_guild_button = button
+        self.current_guild_button.setStyleSheet("border: 1px solid aqua;")
         self.createChannels(guild)
 
 
