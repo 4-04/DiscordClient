@@ -8,13 +8,6 @@ import os
 from lib.events import Events
 
 
-class AThread(QtCore.QThread):
-    def __init__(self, window):
-        super(AThread, self).__init__()
-        self.window = window
-    def run(self):
-        self.window.events.bot.run(self.window.token, bot=self.window.isbot)
-
 
 
 class DiscordClient(QtWidgets.QMainWindow):
@@ -47,9 +40,6 @@ class DiscordClient(QtWidgets.QMainWindow):
             return self.showError("Please fill out your account token in the settings tab.")
         # print(dir(self))
         self.isbot = str(self.type_account.currentText()).lower().startswith("bot")
-        self.fetch_previous = self.fetch_messages.isChecked()
-        self.fetch_amount = int(self.spinBox.value())
-        self.load_members = self.load_members.isChecked()
         try:
             QtCore.QTimer.singleShot(5000, self.connectApi)
             await self.events.bot.start(self.token, bot=self.isbot)
