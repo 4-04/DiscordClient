@@ -121,7 +121,10 @@ border-top: 0px;
               <item>
                <widget class="QLabel" name="channel_name">
                 <property name="styleSheet">
-                 <string notr="true">border: 0px;</string>
+                 <string notr="true">QLabel {
+border: 0px;
+color: white;
+}</string>
                 </property>
                 <property name="text">
                  <string>&lt;h2&gt;# Channel name&lt;/h2&gt;</string>
